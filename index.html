@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kavishe Notepad Pro</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f2f2f2;
+        margin: 0;
+        padding: 0;
+    }
+    header {
+        background-color: #4CAF50;
+        color: white;
+        padding: 15px;
+        text-align: center;
+        font-size: 24px;
+    }
+    #toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        background-color: #ddd;
+        padding: 10px;
+        gap: 5px;
+        justify-content: center;
+    }
+    #toolbar button, #toolbar select, #toolbar input {
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    #titleInput {
+        width: 95%;
+        padding: 10px;
+        margin: 10px auto 0 auto;
+        display: block;
+        font-size: 18px;
+        border-radius: 5px;
+    }
+    #noteArea {
+        width: 95%;
+        height: 300px;
+        margin: 10px auto;
+        padding: 10px;
+        font-size: 16px;
+        resize: vertical;
+        border-radius: 5px;
+    }
+    #notesList {
+        margin: 10px auto;
+        width: 95%;
+    }
+    #notesList div {
+        background-color: #fff;
+        padding: 10px;
+        margin-bottom: 5px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+<header>Kavishe Notepad Pro</header>
+
+<div id="toolbar">
+    <button onclick="newNote()">New</button>
+    <button onclick="saveNote()">Save</button>
+    <button onclick="deleteNote()">Delete</button>
+    <button onclick="copyText()">Copy Text</button>
+    <button onclick="copyAll()">Copy All</button>
+    <button onclick="undoText()">Undo</button>
+    <button onclick="redoText()">Redo</button>
+    <button onclick="shareNote()">Share</button>
+    <input type="text" id="searchBox" placeholder="Search..." oninput="searchText()">
+    <select id="fontSelect" onchange="changeFont()">
+        <option value="Arial">Arial</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Times New Roman">Times New Roman</option>
+    </select>
+    <select id="fontSize" onchange="changeSize()">
+        <option value="14px">14px</option>
+        <option value="16px" selected>16px</option>
+        <option value="20px">20px</option>
+        <option value="24px">24px</option>
+    </select>
+    <input type="color" id="fontColor" onchange="changeFontColor()">
+    <input type="color" id="bgColor" onchange="changeBgColor()">
+    <button onclick="protectNote()">🔒 Protect</button>
+</div>
+
+<!-- 📝 Kisu cha Habari (Jina la file) -->
+<input type="text" id="titleInput" placeholder="Jina la note (file name)...">
+
+<textarea id="noteArea" placeholder="Andika hapa..."></textarea>
+
+<div id="notesList"></div>
+
+<script>
+let notes = []; // sasa ni list ya object {title:"", content:""}
+let currentNoteIndex = -1;
+let undoStack = [];
+let redoStack = [];
+let passwords = {};
+
+function renderNotes() {
+    const list = document.getElementById('notesList');
+    list.innerHTML = '';
+    notes.forEach((note, index) => {
+        const div = document.createElement('div');
+        div.textContent = note.title; // 🔹 sasa inaonyesha title pekee
+        div.onclick = () => loadNote(index);
+        list.appendChild(div);
+    });
+}
+
+function newNote() {
+    undoStack = [];
+    redoStack = [];
+    currentNoteIndex = -1;
+    document.getElementById('titleInput').value = '';
+    document.getElementById('noteArea').value = '';
+}
+
+function saveNote() {
+    const title = document.getElementById('titleInput').value.trim() || "Bila jina";
+    const text = document.getElementById('noteArea').value;
+    if (currentNoteIndex === -1) {
+        notes.push({title: title, content: text});
+        currentNoteIndex = notes.length - 1;
+    } else {
+        notes[currentNoteIndex] = {title: title, content: text};
+    }
+    renderNotes();
+    alert('Note imehifadhiwa!');
+}
+
+function deleteNote() {
+    if(currentNoteIndex !== -1){
+        notes.splice(currentNoteIndex,1);
+        newNote();
+        renderNotes();
+        alert('Note imefutwa!');
+    } else {
+        alert('Hakuna note iliyochaguliwa.');
+    }
+}
+
+function loadNote(index){
+    if(passwords[index]){
+        let pass = prompt("Weka password ya note hii:");
+        if(pass !== passwords[index]){
+            alert("Password si sahihi!");
+            return;
+        }
+    }
+    currentNoteIndex = index;
+    document.getElementById('titleInput').value = notes[index].title;
+    document.getElementById('noteArea').value = notes[index].content;
+    undoStack = [];
+    redoStack = [];
+}
+
+function copyText(){
+    const text = document.getElementById('noteArea').value;
+    if(text){
+        navigator.clipboard.writeText(text.substring(0,30))
+        .then(()=>alert('Sehemu ya maandishi imekopiwa!'));
+    }
+}
+
+function copyAll(){
+    const text = document.getElementById('noteArea').value;
+    if(text){
+        navigator.clipboard.writeText(text)
+        .then(()=>alert('Note nzima imekopiwa!'));
+    }
+}
+
+function undoText(){
+    const area = document.getElementById('noteArea');
+    if(area.value){
+        redoStack.push(area.value);
+    }
+    if(undoStack.length > 0){
+        area.value = undoStack.pop();
+    }
+}
+
+function redoText(){
+    const area = document.getElementById('noteArea');
+    if(redoStack.length > 0){
+        undoStack.push(area.value);
+        area.value = redoStack.pop();
+    }
+}
+
+document.getElementById('noteArea').addEventListener('input', ()=>{
+    undoStack.push(document.getElementById('noteArea').value);
+});
+
+function shareNote(){
+    const title = document.getElementById('titleInput').value;
+    const text = document.getElementById('noteArea').value;
+    if(navigator.share){
+        navigator.share({
+            title: title,
+            text: text
+        }).then(()=>alert('Imeshare!'))
+        .catch(err=>console.log(err));
+    } else {
+        alert('Browser yako haiungi mkono share!');
+    }
+}
+
+// 🔎 Search (inatafuta ndani ya maandishi ya note uliyofungua sasa hivi)
+function searchText(){
+    let search = document.getElementById('searchBox').value.toLowerCase();
+    let area = document.getElementById('noteArea');
+    let text = area.value;
+    if(search === ""){
+        return;
+    }
+    let pos = text.toLowerCase().indexOf(search);
+    if(pos !== -1){
+        area.focus();
+        area.setSelectionRange(pos, pos+search.length);
+    }
+}
+
+// ✏️ Font
+function changeFont(){
+    document.getElementById('noteArea').style.fontFamily = 
+        document.getElementById('fontSelect').value;
+}
+
+function changeSize(){
+    document.getElementById('noteArea').style.fontSize = 
+        document.getElementById('fontSize').value;
+}
+
+function changeFontColor(){
+    document.getElementById('noteArea').style.color = 
+        document.getElementById('fontColor').value;
+}
+
+function changeBgColor(){
+    document.getElementById('noteArea').style.backgroundColor = 
+        document.getElementById('bgColor').value;
+}
+
+// 🔒 Protect note
+function protectNote(){
+    if(currentNoteIndex === -1){
+        alert("Hifadhi note kwanza kabla ya kulinda.");
+        return;
+    }
+    let pass = prompt("Weka password ya note hii:");
+    if(pass){
+        passwords[currentNoteIndex] = pass;
+        alert("Note imelindwa kwa password!");
+    }
+}
+
+// Auto-save
+setInterval(()=>{
+    if(currentNoteIndex!==-1){
+        notes[currentNoteIndex].title = document.getElementById('titleInput').value;
+        notes[currentNoteIndex].content = document.getElementById('noteArea').value;
+    }
+},30000);
+</script>
+</body>
+</html>
